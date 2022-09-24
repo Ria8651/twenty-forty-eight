@@ -96,6 +96,20 @@ impl Board {
             };
         }
     }
+
+    fn score(&self) -> u32 {
+        let mut score = 0;
+        for y in 0..4 {
+            for x in 0..4 {
+                let exp = self.data[y][x] as u32;
+                if exp > 0 {
+                    let x = 1 << exp;
+                    score += exp * x - x;
+                }
+            }
+        }
+        score
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -134,6 +148,9 @@ struct Tile(u32);
 #[derive(Component)]
 struct TileText(u32);
 
+#[derive(Component)]
+struct Score;
+
 const fn color_map(exp: u8) -> Color {
     match exp {
         0 => Color::rgb(0.80, 0.76, 0.71),
@@ -151,15 +168,19 @@ const fn color_map(exp: u8) -> Color {
 fn update_board(
     board: Res<Board>,
     mut update_event: EventReader<UpdateBoardEvent>,
-    mut tile_querys: ParamSet<(Query<(&Tile, &mut UiColor)>, Query<(&TileText, &mut Text)>)>,
+    mut querys: ParamSet<(
+        Query<(&Tile, &mut UiColor)>,
+        Query<(&TileText, &mut Text)>,
+        Query<&mut Text, With<Score>>,
+    )>,
 ) {
     for _ in update_event.iter() {
-        for (tile, mut ui_colour) in tile_querys.p0().iter_mut() {
+        for (tile, mut ui_colour) in querys.p0().iter_mut() {
             let exp = board.data[3 - tile.0 as usize / 4][tile.0 as usize % 4];
             *ui_colour = color_map(exp).into();
         }
 
-        for (tile_text, mut text) in tile_querys.p1().iter_mut() {
+        for (tile_text, mut text) in querys.p1().iter_mut() {
             let exp = board.data[3 - tile_text.0 as usize / 4][tile_text.0 as usize % 4];
 
             let string = if exp == 0 {
@@ -173,8 +194,11 @@ fn update_board(
             } else {
                 Color::rgb(0.98, 0.96, 0.95)
             };
-            // *ui_colour = color_map(exp).into();
         }
+
+        let mut score_query = querys.p2();
+        let mut score = score_query.single_mut();
+        score.sections[0].value = board.score().to_string();
     }
 }
 
@@ -187,6 +211,7 @@ fn setup(
         .spawn_bundle(NodeBundle {
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                flex_direction: FlexDirection::ColumnReverse,
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 ..default()
@@ -195,6 +220,23 @@ fn setup(
             ..default()
         })
         .with_children(|parent| {
+            parent
+                .spawn_bundle(
+                    TextBundle::from_section(
+                        "0",
+                        TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 60.0,
+                            color: Color::rgb(0.47, 0.44, 0.40),
+                        },
+                    )
+                    .with_style(Style {
+                        margin: UiRect::all(Val::Px(10.0)),
+                        ..default()
+                    }),
+                )
+                .insert(Score);
+
             parent
                 .spawn_bundle(NodeBundle {
                     style: Style {
