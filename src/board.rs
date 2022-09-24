@@ -1,18 +1,20 @@
 use bevy::prelude::*;
+use rand::Rng;
 
 pub struct BoardPlugin;
 
 impl Plugin for BoardPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<UpdateBoardEvent>()
-            .insert_resource(Board {
-                data: vec![
-                    vec![3, 2, 1, 1],
-                    vec![4, 5, 6, 7],
-                    vec![11, 10, 9, 8],
-                    vec![12, 13, 14, 15],
-                ],
-            })
+            // .insert_resource(Board {
+            //     data: vec![
+            //         vec![3, 2, 1, 1],
+            //         vec![4, 5, 6, 7],
+            //         vec![11, 10, 9, 8],
+            //         vec![12, 13, 14, 15],
+            //     ],
+            // })
+            .insert_resource(Board::new())
             .add_startup_system(setup)
             .add_system(update_board);
     }
@@ -24,34 +26,74 @@ pub struct Board {
 }
 
 impl Board {
+    pub fn new() -> Self {
+        let mut board = Board {
+            data: vec![vec![0; 4]; 4],
+        };
+
+        board.add_random();
+        board.add_random();
+
+        board
+    }
+
     pub fn swipe(&mut self, direction: Direction) {
+        let mut new_board = self.clone();
         for a in 0..4 {
             let mut last = (a, 0);
             for b in 1..4 {
                 let pos = abtoxy(a, b, direction);
-                let current = self.data[pos.y][pos.x];
+                let current = new_board.data[pos.y][pos.x];
 
                 let last_pos = abtoxy(last.0, last.1, direction);
-                let last_value = self.data[last_pos.y][last_pos.x];
+                let last_value = new_board.data[last_pos.y][last_pos.x];
 
                 if current != 0 {
                     if current == last_value {
-                        self.data[pos.y][pos.x] = 0;
-                        self.data[last_pos.y][last_pos.x] += 1;
+                        new_board.data[pos.y][pos.x] = 0;
+                        new_board.data[last_pos.y][last_pos.x] += 1;
                         last = (last.0, last.1 + 1);
                     } else if last_value == 0 {
-                        self.data[pos.y][pos.x] = 0;
-                        self.data[last_pos.y][last_pos.x] = current;
+                        new_board.data[pos.y][pos.x] = 0;
+                        new_board.data[last_pos.y][last_pos.x] = current;
                     } else {
                         last = (last.0, last.1 + 1);
                         let last_pos = abtoxy(last.0, last.1, direction);
                         if last_pos != pos {
-                            self.data[pos.y][pos.x] = 0;
-                            self.data[last_pos.y][last_pos.x] = current;
+                            new_board.data[pos.y][pos.x] = 0;
+                            new_board.data[last_pos.y][last_pos.x] = current;
                         }
                     }
                 }
             }
+        }
+
+        if new_board != *self {
+            self.data = new_board.data;
+            self.add_random();
+        }
+    }
+
+    fn add_random(&mut self) {
+        let mut empty_tiles = Vec::new();
+        for y in 0..4 {
+            for x in 0..4 {
+                if self.data[y][x] == 0 {
+                    empty_tiles.push((x, y));
+                }
+            }
+        }
+
+        if empty_tiles.len() > 0 {
+            let mut rng = rand::thread_rng();
+            let index = rng.gen_range(0..empty_tiles.len());
+            let (x, y) = empty_tiles[index];
+
+            let tile_type = rng.gen_range(0..10);
+            self.data[y][x] = match tile_type {
+                0 => 2,
+                _ => 1,
+            };
         }
     }
 }
@@ -109,10 +151,7 @@ const fn color_map(exp: u8) -> Color {
 fn update_board(
     board: Res<Board>,
     mut update_event: EventReader<UpdateBoardEvent>,
-    mut tile_querys: ParamSet<(
-        Query<(&Tile, &mut UiColor)>,
-        Query<(&TileText, &mut Text)>,
-    )>,
+    mut tile_querys: ParamSet<(Query<(&Tile, &mut UiColor)>, Query<(&TileText, &mut Text)>)>,
 ) {
     for _ in update_event.iter() {
         for (tile, mut ui_colour) in tile_querys.p0().iter_mut() {
