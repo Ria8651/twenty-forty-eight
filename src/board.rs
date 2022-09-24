@@ -97,7 +97,7 @@ impl Board {
         }
     }
 
-    fn score(&self) -> u32 {
+    pub fn score(&self) -> u32 {
         let mut score = 0;
         for y in 0..4 {
             for x in 0..4 {
@@ -133,7 +133,7 @@ const fn abtoxy(a: usize, b: usize, direction: Direction) -> Pos {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Direction {
     Up,
     Down,

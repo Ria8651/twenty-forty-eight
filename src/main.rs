@@ -22,6 +22,7 @@ fn update(
     mut board: ResMut<Board>,
     mut events: EventWriter<UpdateBoardEvent>,
 ) {
+    // human player
     if input.just_pressed(KeyCode::Up) || input.just_pressed(KeyCode::W) {
         board.swipe(Direction::Up);
         events.send(UpdateBoardEvent);
@@ -35,4 +36,28 @@ fn update(
         board.swipe(Direction::Right);
         events.send(UpdateBoardEvent);
     }
+
+    // ai player
+    let directions = vec![Direction::Up, Direction::Down, Direction::Left, Direction::Right];
+    let mut scores = Vec::new();
+    for direction in directions.iter() {
+        let mut new_board = board.clone();
+        new_board.swipe(*direction);
+
+        if new_board == *board {
+            scores.push(-1);
+        } else {
+            scores.push(new_board.score() as i32);
+        }
+    }
+    
+    let mut max = 0;
+    for i in 0..scores.len() {
+        if scores[i] > scores[max] {
+            max = i;
+        }
+    }
+
+    board.swipe(directions[max]);
+    events.send(UpdateBoardEvent);
 }
