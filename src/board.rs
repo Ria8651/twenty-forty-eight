@@ -149,7 +149,9 @@ struct Tile(u32);
 struct TileText(u32);
 
 #[derive(Component)]
-struct Score;
+struct ScoreText;
+#[derive(Component)]
+struct TimeText;
 
 const fn color_map(exp: u8) -> Color {
     match exp {
@@ -171,8 +173,10 @@ fn update_board(
     mut querys: ParamSet<(
         Query<(&Tile, &mut UiColor)>,
         Query<(&TileText, &mut Text)>,
-        Query<&mut Text, With<Score>>,
+        Query<&mut Text, With<ScoreText>>,
+        Query<&mut Text, With<TimeText>>,
     )>,
+    time: Res<Time>,
 ) {
     for _ in update_event.iter() {
         for (tile, mut ui_colour) in querys.p0().iter_mut() {
@@ -197,8 +201,12 @@ fn update_board(
         }
 
         let mut score_query = querys.p2();
-        let mut score = score_query.single_mut();
-        score.sections[0].value = board.score().to_string();
+        let mut score_text = score_query.single_mut();
+        score_text.sections[0].value = board.score().to_string();
+
+        let mut time_query = querys.p3();
+        let mut time_text = time_query.single_mut();
+        time_text.sections[0].value = format!("{:.2}", time.seconds_since_startup());
     }
 }
 
@@ -211,7 +219,6 @@ fn setup(
         .spawn_bundle(NodeBundle {
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
-                flex_direction: FlexDirection::ColumnReverse,
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 ..default()
@@ -221,69 +228,102 @@ fn setup(
         })
         .with_children(|parent| {
             parent
-                .spawn_bundle(
-                    TextBundle::from_section(
-                        "0",
-                        TextStyle {
-                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                            font_size: 60.0,
-                            color: Color::rgb(0.47, 0.44, 0.40),
-                        },
-                    )
-                    .with_style(Style {
-                        margin: UiRect::all(Val::Px(10.0)),
-                        ..default()
-                    }),
-                )
-                .insert(Score);
-
-            parent
                 .spawn_bundle(NodeBundle {
                     style: Style {
-                        size: Size::new(Val::Px(400.0), Val::Px(400.0)),
-                        padding: UiRect {
-                            top: Val::Px(10.0),
-                            left: Val::Px(10.0),
-                            ..default()
-                        },
-                        flex_wrap: FlexWrap::Wrap,
+                        size: Size::new(Val::Px(400.0), Val::Percent(100.0)),
+                        flex_direction: FlexDirection::ColumnReverse,
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::Center,
                         ..default()
                     },
-                    color: Color::rgb(0.73, 0.68, 0.63).into(),
+                    color: Color::NONE.into(),
                     ..default()
                 })
                 .with_children(|parent| {
-                    for i in 0..16 {
-                        parent
-                            .spawn_bundle(NodeBundle {
-                                style: Style {
-                                    size: Size::new(Val::Px(87.5), Val::Px(87.5)),
-                                    margin: UiRect {
-                                        bottom: Val::Px(10.0),
-                                        right: Val::Px(10.0),
-                                        ..default()
+                    parent
+                        .spawn_bundle(NodeBundle {
+                            style: Style {
+                                size: Size::new(Val::Percent(100.0), Val::Px(80.0)),
+                                flex_direction: FlexDirection::Row,
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::SpaceBetween,
+                                ..default()
+                            },
+                            color: Color::NONE.into(),
+                            ..default()
+                        })
+                        .with_children(|parent| {
+                            parent
+                                .spawn_bundle(TextBundle::from_section(
+                                    "0",
+                                    TextStyle {
+                                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                                        font_size: 60.0,
+                                        color: Color::rgb(0.47, 0.44, 0.40),
                                     },
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
+                                ))
+                                .insert(ScoreText);
+                            parent
+                                .spawn_bundle(TextBundle::from_section(
+                                    "0",
+                                    TextStyle {
+                                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                                        font_size: 60.0,
+                                        color: Color::rgb(0.47, 0.44, 0.40),
+                                    },
+                                ))
+                                .insert(TimeText);
+                        });
+
+                    parent
+                        .spawn_bundle(NodeBundle {
+                            style: Style {
+                                size: Size::new(Val::Px(400.0), Val::Px(400.0)),
+                                padding: UiRect {
+                                    top: Val::Px(10.0),
+                                    left: Val::Px(10.0),
                                     ..default()
                                 },
-                                color: Color::rgb(0.6, 0.6, 0.6).into(),
+                                flex_wrap: FlexWrap::Wrap,
                                 ..default()
-                            })
-                            .insert(Tile(i))
-                            .with_children(|parent| {
+                            },
+                            color: Color::rgb(0.73, 0.68, 0.63).into(),
+                            ..default()
+                        })
+                        .with_children(|parent| {
+                            for i in 0..16 {
                                 parent
-                                    .spawn_bundle(TextBundle::from_section(
-                                        i.to_string(),
-                                        TextStyle {
-                                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                            font_size: 40.0,
-                                            color: Color::rgb(0.47, 0.44, 0.40),
+                                    .spawn_bundle(NodeBundle {
+                                        style: Style {
+                                            size: Size::new(Val::Px(87.5), Val::Px(87.5)),
+                                            margin: UiRect {
+                                                bottom: Val::Px(10.0),
+                                                right: Val::Px(10.0),
+                                                ..default()
+                                            },
+                                            justify_content: JustifyContent::Center,
+                                            align_items: AlignItems::Center,
+                                            ..default()
                                         },
-                                    ))
-                                    .insert(TileText(i));
-                            });
-                    }
+                                        color: Color::rgb(0.6, 0.6, 0.6).into(),
+                                        ..default()
+                                    })
+                                    .insert(Tile(i))
+                                    .with_children(|parent| {
+                                        parent
+                                            .spawn_bundle(TextBundle::from_section(
+                                                i.to_string(),
+                                                TextStyle {
+                                                    font: asset_server
+                                                        .load("fonts/FiraSans-Bold.ttf"),
+                                                    font_size: 40.0,
+                                                    color: Color::rgb(0.47, 0.44, 0.40),
+                                                },
+                                            ))
+                                            .insert(TileText(i));
+                                    });
+                            }
+                        });
                 });
         });
 

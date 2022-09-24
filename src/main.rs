@@ -42,9 +42,11 @@ fn update(
         println!("{:?}", recursive_board_score(&board, 5));
     }
 
-    let tmp_board = &board.clone();
-    board.swipe(recursive_board_score(tmp_board, 7).1);
-    events.send(UpdateBoardEvent);
+    let tmp_board = board.clone();
+    board.swipe(recursive_board_score(&tmp_board, 7).1);
+    if *board != tmp_board {
+        events.send(UpdateBoardEvent);
+    }
 }
 
 fn recursive_board_score(board: &Board, depth: u32) -> (i32, Direction) {
