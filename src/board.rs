@@ -19,11 +19,73 @@ impl Plugin for BoardPlugin {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Board {
-    data: Vec<Vec<u8>>,
+pub struct Board {
+    pub data: Vec<Vec<u8>>,
 }
 
-struct UpdateBoardEvent(Board);
+impl Board {
+    pub fn swipe(&mut self, direction: Direction) {
+        for a in 0..4 {
+            let mut last = (a, 0);
+            for b in 1..4 {
+                let pos = abtoxy(a, b, direction);
+                let current = self.data[pos.y][pos.x];
+
+                let last_pos = abtoxy(last.0, last.1, direction);
+                let last_value = self.data[last_pos.y][last_pos.x];
+
+                if current != 0 {
+                    if current == last_value {
+                        self.data[pos.y][pos.x] = 0;
+                        self.data[last_pos.y][last_pos.x] += 1;
+                        last = (last.0, last.1 + 1);
+                    } else if last_value == 0 {
+                        self.data[pos.y][pos.x] = 0;
+                        self.data[last_pos.y][last_pos.x] = current;
+                    } else {
+                        last = (last.0, last.1 + 1);
+                        let last_pos = abtoxy(last.0, last.1, direction);
+                        if last_pos != pos {
+                            self.data[pos.y][pos.x] = 0;
+                            self.data[last_pos.y][last_pos.x] = current;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct Pos {
+    x: usize,
+    y: usize,
+}
+
+impl Pos {
+    const fn new(x: usize, y: usize) -> Self {
+        Self { x, y }
+    }
+}
+
+const fn abtoxy(a: usize, b: usize, direction: Direction) -> Pos {
+    match direction {
+        Direction::Up => Pos::new(a, b),
+        Direction::Down => Pos::new(a, 3 - b),
+        Direction::Left => Pos::new(b, a),
+        Direction::Right => Pos::new(3 - b, a),
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+pub struct UpdateBoardEvent;
 
 #[derive(Component)]
 struct Tile(u32);
@@ -31,27 +93,29 @@ struct Tile(u32);
 struct TileText(u32);
 
 fn update_board(
-    mut board: ResMut<Board>,
-    mut events: EventReader<UpdateBoardEvent>,
+    board: Res<Board>,
+    mut update_event: EventReader<UpdateBoardEvent>,
     // mut tile_query: Query<&mut Tile>,
     mut tile_text_query: Query<(&TileText, &mut Text)>,
 ) {
-    for event in events.iter() {
-        *board = event.0.clone();
-    }
-
-    for (tile_text, mut text) in tile_text_query.iter_mut() {
-        let exp = board.data[3 - tile_text.0 as usize / 4][tile_text.0 as usize % 4];
-        if exp == 0 {
-            text.sections[0].value = "".to_string();
-        } else {
-            let value = 1u32 << exp as u32;
-            text.sections[0].value = value.to_string();
+    for _ in update_event.iter() {
+        for (tile_text, mut text) in tile_text_query.iter_mut() {
+            let exp = board.data[3 - tile_text.0 as usize / 4][tile_text.0 as usize % 4];
+            if exp == 0 {
+                text.sections[0].value = "".to_string();
+            } else {
+                let value = 1u32 << exp as u32;
+                text.sections[0].value = value.to_string();
+            }
         }
     }
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut update_event: EventWriter<UpdateBoardEvent>,
+) {
     commands
         .spawn_bundle(NodeBundle {
             style: Style {
@@ -101,7 +165,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                             .with_children(|parent| {
                                 parent
                                     .spawn_bundle(TextBundle::from_section(
-                                        "2",
+                                        i.to_string(),
                                         TextStyle {
                                             font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                                             font_size: 60.0,
@@ -113,4 +177,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     }
                 });
         });
+
+    update_event.send(UpdateBoardEvent);
 }
