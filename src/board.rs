@@ -7,10 +7,10 @@ impl Plugin for BoardPlugin {
         app.add_event::<UpdateBoardEvent>()
             .insert_resource(Board {
                 data: vec![
-                    vec![0, 1, 1, 2],
-                    vec![1, 0, 2, 1],
-                    vec![1, 1, 2, 1],
-                    vec![2, 3, 4, 5],
+                    vec![3, 2, 1, 1],
+                    vec![4, 5, 6, 7],
+                    vec![11, 10, 9, 8],
+                    vec![12, 13, 14, 15],
                 ],
             })
             .add_startup_system(setup)
@@ -92,21 +92,49 @@ struct Tile(u32);
 #[derive(Component)]
 struct TileText(u32);
 
+const fn color_map(exp: u8) -> Color {
+    match exp {
+        0 => Color::rgb(0.80, 0.76, 0.71),
+        1 => Color::rgb(0.93, 0.90, 0.85),
+        2 => Color::rgb(0.93, 0.89, 0.79),
+        3 => Color::rgb(0.95, 0.7, 0.48),
+        4 => Color::rgb(0.96, 0.59, 0.39),
+        5 => Color::rgb(0.97, 0.49, 0.37),
+        6 => Color::rgb(0.97, 0.37, 0.24),
+        7..=11 => Color::rgb(0.93, 0.82, 0.45),
+        _ => Color::rgb(0.4, 0.4, 0.4),
+    }
+}
+
 fn update_board(
     board: Res<Board>,
     mut update_event: EventReader<UpdateBoardEvent>,
-    // mut tile_query: Query<&mut Tile>,
-    mut tile_text_query: Query<(&TileText, &mut Text)>,
+    mut tile_querys: ParamSet<(
+        Query<(&Tile, &mut UiColor)>,
+        Query<(&TileText, &mut Text)>,
+    )>,
 ) {
     for _ in update_event.iter() {
-        for (tile_text, mut text) in tile_text_query.iter_mut() {
+        for (tile, mut ui_colour) in tile_querys.p0().iter_mut() {
+            let exp = board.data[3 - tile.0 as usize / 4][tile.0 as usize % 4];
+            *ui_colour = color_map(exp).into();
+        }
+
+        for (tile_text, mut text) in tile_querys.p1().iter_mut() {
             let exp = board.data[3 - tile_text.0 as usize / 4][tile_text.0 as usize % 4];
-            if exp == 0 {
-                text.sections[0].value = "".to_string();
+
+            let string = if exp == 0 {
+                "".to_string()
             } else {
-                let value = 1u32 << exp as u32;
-                text.sections[0].value = value.to_string();
-            }
+                (1u32 << exp as u32).to_string()
+            };
+            text.sections[0].value = string;
+            text.sections[0].style.color = if exp <= 3 {
+                Color::rgb(0.47, 0.44, 0.40)
+            } else {
+                Color::rgb(0.98, 0.96, 0.95)
+            };
+            // *ui_colour = color_map(exp).into();
         }
     }
 }
@@ -124,7 +152,7 @@ fn setup(
                 align_items: AlignItems::Center,
                 ..default()
             },
-            color: Color::NONE.into(),
+            color: Color::rgb(0.98, 0.97, 0.94).into(),
             ..default()
         })
         .with_children(|parent| {
@@ -140,7 +168,7 @@ fn setup(
                         flex_wrap: FlexWrap::Wrap,
                         ..default()
                     },
-                    color: Color::rgb(0.5, 0.5, 0.5).into(),
+                    color: Color::rgb(0.73, 0.68, 0.63).into(),
                     ..default()
                 })
                 .with_children(|parent| {
@@ -168,8 +196,8 @@ fn setup(
                                         i.to_string(),
                                         TextStyle {
                                             font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                            font_size: 60.0,
-                                            color: Color::WHITE,
+                                            font_size: 40.0,
+                                            color: Color::rgb(0.47, 0.44, 0.40),
                                         },
                                     ))
                                     .insert(TileText(i));

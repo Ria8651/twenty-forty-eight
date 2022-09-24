@@ -22,16 +22,16 @@ fn update(
     mut board: ResMut<Board>,
     mut events: EventWriter<UpdateBoardEvent>,
 ) {
-    if input.just_pressed(KeyCode::Up) {
+    if input.just_pressed(KeyCode::Up) || input.just_pressed(KeyCode::W) {
         board.swipe(Direction::Up);
         events.send(UpdateBoardEvent);
-    } else if input.just_pressed(KeyCode::Down) {
+    } else if input.just_pressed(KeyCode::Down) || input.just_pressed(KeyCode::S) {
         board.swipe(Direction::Down);
         events.send(UpdateBoardEvent);
-    } else if input.just_pressed(KeyCode::Left) {
+    } else if input.just_pressed(KeyCode::Left) || input.just_pressed(KeyCode::A) {
         board.swipe(Direction::Left);
         events.send(UpdateBoardEvent);
-    } else if input.just_pressed(KeyCode::Right) {
+    } else if input.just_pressed(KeyCode::Right) || input.just_pressed(KeyCode::D) {
         board.swipe(Direction::Right);
         events.send(UpdateBoardEvent);
     }
