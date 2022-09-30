@@ -35,11 +35,14 @@ fn update(
     let mut direction = None;
     if input.just_pressed(KeyCode::Up) || input.just_pressed(KeyCode::W) {
         direction = Some(Direction::Up);
-    } else if input.just_pressed(KeyCode::Down) || input.just_pressed(KeyCode::S) {
+    }
+    if input.just_pressed(KeyCode::Down) || input.just_pressed(KeyCode::S) {
         direction = Some(Direction::Down);
-    } else if input.just_pressed(KeyCode::Left) || input.just_pressed(KeyCode::A) {
+    }
+    if input.just_pressed(KeyCode::Left) || input.just_pressed(KeyCode::A) {
         direction = Some(Direction::Left);
-    } else if input.just_pressed(KeyCode::Right) || input.just_pressed(KeyCode::D) {
+    }
+    if input.just_pressed(KeyCode::Right) || input.just_pressed(KeyCode::D) {
         direction = Some(Direction::Right);
     }
 

@@ -41,6 +41,11 @@ fn ui_system(
     egui::Window::new("Settings")
         .anchor(Align2::RIGHT_TOP, [-5.0, 5.0])
         .show(egui_context.ctx_mut(), |ui| {
+            if ui.button("Reset board").clicked() {
+                *board = Board::new();
+                events.send(UpdateBoardEvent);
+            }
+
             match event_info.recording {
                 true => {
                     if ui.button("Stop Recording").clicked() {
