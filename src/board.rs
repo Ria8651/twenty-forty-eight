@@ -112,14 +112,14 @@ impl Board {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct Pos {
-    x: usize,
-    y: usize,
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Pos {
+    pub x: usize,
+    pub y: usize,
 }
 
 impl Pos {
-    const fn new(x: usize, y: usize) -> Self {
+    pub const fn new(x: usize, y: usize) -> Self {
         Self { x, y }
     }
 }
