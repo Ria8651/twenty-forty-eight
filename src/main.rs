@@ -1,13 +1,19 @@
 use bevy::prelude::*; //, winit::WinitSettings
 use board::{Board, BoardPlugin, Direction, Pos, UpdateBoardEvent};
+use record::RecordPlugin;
+use ui::UIPlugin;
 
 mod board;
+mod record;
+mod ui;
 
 fn main() {
     App::new()
         // .insert_resource(WinitSettings::desktop_app())
         .add_plugins(DefaultPlugins)
         .add_plugin(BoardPlugin)
+        .add_plugin(UIPlugin)
+        .add_plugin(RecordPlugin)
         .add_startup_system(setup)
         .add_system(update)
         .run();
@@ -21,18 +27,30 @@ fn update(
     input: Res<Input<KeyCode>>,
     mut board: ResMut<Board>,
     mut events: EventWriter<UpdateBoardEvent>,
+    mut record_event: EventWriter<record::RecordEvent>,
 ) {
     let tmp_board = board.clone();
 
     // human player
+    let mut direction = None;
     if input.just_pressed(KeyCode::Up) || input.just_pressed(KeyCode::W) {
-        board.swipe(Direction::Up);
+        direction = Some(Direction::Up);
     } else if input.just_pressed(KeyCode::Down) || input.just_pressed(KeyCode::S) {
-        board.swipe(Direction::Down);
+        direction = Some(Direction::Down);
     } else if input.just_pressed(KeyCode::Left) || input.just_pressed(KeyCode::A) {
-        board.swipe(Direction::Left);
+        direction = Some(Direction::Left);
     } else if input.just_pressed(KeyCode::Right) || input.just_pressed(KeyCode::D) {
-        board.swipe(Direction::Right);
+        direction = Some(Direction::Right);
+    }
+
+    if let Some(direction) = direction {
+        board.swipe(direction);
+        if *board != tmp_board {
+            record_event.send(record::RecordEvent::AddMove(record::InoutPair {
+                input: tmp_board.clone(),
+                output: direction,
+            }));
+        }
     }
 
     if input.just_pressed(KeyCode::Space) {
@@ -46,23 +64,23 @@ fn update(
     }
 
     // ai player
-    match Technique::RecursiveScoring {
-        Technique::DownLeft => {
-            board.swipe(Direction::Down);
-            board.swipe(Direction::Right);
-            if *board == tmp_board {
-                board.swipe(Direction::Left);
-                board.swipe(Direction::Down);
-                board.swipe(Direction::Right);
-            }
-        }
-        Technique::RecursiveScoring => {
-            // for _ in 0..10 {
-            let tmp = board.clone();
-            board.swipe(recursive_board_score(&tmp, 7, Scoreing::MaxScore).1);
-            // }
-        }
-    }
+    // match Technique::RecursiveScoring {
+    //     Technique::DownLeft => {
+    //         board.swipe(Direction::Down);
+    //         board.swipe(Direction::Right);
+    //         if *board == tmp_board {
+    //             board.swipe(Direction::Left);
+    //             board.swipe(Direction::Down);
+    //             board.swipe(Direction::Right);
+    //         }
+    //     }
+    //     Technique::RecursiveScoring => {
+    //         // for _ in 0..10 {
+    //         let tmp = board.clone();
+    //         board.swipe(recursive_board_score(&tmp, 7, Scoreing::MaxScore).1);
+    //         // }
+    //     }
+    // }
 
     if *board != tmp_board {
         events.send(UpdateBoardEvent);
