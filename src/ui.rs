@@ -1,7 +1,7 @@
 use crate::{
-    board::{Board, UpdateBoardEvent},
+    board::Board,
     record::{load_board_from_file, RecordEvent, RecordInfo},
-    ScoringMethod,
+    BoardResource, render::UpdateBoardEvent,
 };
 use bevy::prelude::*;
 use bevy_inspector_egui::{
@@ -28,11 +28,21 @@ impl Plugin for UIPlugin {
     }
 }
 
-#[derive(Resource, Reflect, Default)]
+#[derive(Resource, Reflect)]
 pub struct UiSettings {
-    pub scoring_method: ScoringMethod,
+    pub depth: u8,
     pub automatic: bool,
     pub speed: f32,
+}
+
+impl Default for UiSettings {
+    fn default() -> Self {
+        Self {
+            depth: 8,
+            automatic: false,
+            speed: 0.0,
+        }
+    }
 }
 
 #[derive(Resource)]
@@ -48,7 +58,7 @@ fn ui_system(
     mut record_event: EventWriter<RecordEvent>,
     mut ui_state: ResMut<UIState>,
     mut ui_settings: ResMut<UiSettings>,
-    mut board: ResMut<Board>,
+    mut board: ResMut<BoardResource>,
     mut events: EventWriter<UpdateBoardEvent>,
     mut file_dialog: Query<(Entity, &mut SelectedFile)>,
     type_registry: Res<AppTypeRegistry>,
@@ -57,7 +67,10 @@ fn ui_system(
         ui_for_value(ui_settings.as_mut(), ui, &type_registry.read());
 
         if ui.button("Reset board").clicked() {
-            *board = Board::new();
+            let mut new_board = Board::new();
+            new_board.add_random();
+            new_board.add_random();
+            board.0 = new_board;
             events.send(UpdateBoardEvent);
         }
 
@@ -91,7 +104,7 @@ fn ui_system(
 
             if ui.add(slider).changed() {
                 let file = ui_state.loaded_recording.as_ref().unwrap();
-                *board = load_board_from_file(file, ui_state.board_selector).input;
+                board.0 = load_board_from_file(file, ui_state.board_selector).input;
                 events.send(UpdateBoardEvent);
             }
         }

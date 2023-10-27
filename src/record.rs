@@ -1,7 +1,8 @@
-use super::{Board, Direction};
 use bevy::prelude::*;
 use futures_lite::future;
 use std::path::PathBuf;
+
+use crate::board::{Board, Swipe};
 
 pub struct RecordPlugin;
 
@@ -27,7 +28,7 @@ pub struct InoutPair<A, B> {
 pub struct RecordInfo {
     pub recording: bool,
     save_location: PathBuf,
-    move_stack: Vec<InoutPair<Board, Direction>>,
+    move_stack: Vec<InoutPair<Board, Swipe>>,
 }
 
 #[derive(Event)]
@@ -35,7 +36,7 @@ pub enum RecordEvent {
     Start,
     Stop,
     // inital board and correct direction
-    AddMove(InoutPair<Board, Direction>),
+    AddMove(InoutPair<Board, Swipe>),
 }
 
 #[derive(Component)]
@@ -95,13 +96,13 @@ fn record_system(
     }
 }
 
-pub fn load_board_from_file(file: &[u8], index: usize) -> InoutPair<Board, Direction> {
+pub fn load_board_from_file(file: &[u8], index: usize) -> InoutPair<Board, Swipe> {
     // each board is 17 bytes
     let board_index = index * 17;
     let board_slice = &file[board_index..board_index + 17];
 
     let board = Board::deserialize(board_slice);
-    let direction = Direction::deserialize(&board_slice[16..17]);
+    let direction = Swipe::deserialize(&board_slice[16..17]);
 
     InoutPair {
         input: board,
@@ -123,13 +124,13 @@ impl Searialize for Board {
     }
 }
 
-impl Searialize for Direction {
+impl Searialize for Swipe {
     fn serialize(&self, output: &mut Vec<u8>) {
         match self {
-            Direction::Up => output.push(0),
-            Direction::Down => output.push(1),
-            Direction::Left => output.push(2),
-            Direction::Right => output.push(3),
+            Swipe::Up => output.push(0),
+            Swipe::Down => output.push(1),
+            Swipe::Left => output.push(2),
+            Swipe::Right => output.push(3),
         }
     }
 }
@@ -148,17 +149,20 @@ impl Deserialize for Board {
                 i += 1;
             }
         }
-        Board { data }
+        Board {
+            data,
+            player_to_move: true,
+        }
     }
 }
 
-impl Deserialize for Direction {
+impl Deserialize for Swipe {
     fn deserialize(input: &[u8]) -> Self {
         match input[0] {
-            0 => Direction::Up,
-            1 => Direction::Down,
-            2 => Direction::Left,
-            3 => Direction::Right,
+            0 => Swipe::Up,
+            1 => Swipe::Down,
+            2 => Swipe::Left,
+            3 => Swipe::Right,
             _ => panic!("Invalid direction"),
         }
     }

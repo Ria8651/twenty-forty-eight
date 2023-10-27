@@ -1,11 +1,12 @@
 use bevy::prelude::*;
 
+use crate::BoardResource;
+
 pub struct BoardPlugin;
 
 impl Plugin for BoardPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<UpdateBoardEvent>()
-            .insert_resource(Board::new())
             .add_systems(Startup, setup)
             .add_systems(Update, update_board);
     }
@@ -39,7 +40,7 @@ const fn color_map(exp: u8) -> Color {
 }
 
 fn update_board(
-    board: Res<Board>,
+    board: Res<BoardResource>,
     mut update_event: EventReader<UpdateBoardEvent>,
     mut querys: ParamSet<(
         Query<(&Tile, &mut BackgroundColor)>,
@@ -104,7 +105,7 @@ fn setup(
                     style: Style {
                         width: Val::Px(400.0),
                         height: Val::Percent(100.0),
-                        flex_direction: FlexDirection::ColumnReverse,
+                        flex_direction: FlexDirection::Column,
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::Center,
                         ..default()
@@ -159,7 +160,8 @@ fn setup(
                                     left: Val::Px(10.0),
                                     ..default()
                                 },
-                                flex_wrap: FlexWrap::Wrap,
+                                flex_wrap: FlexWrap::WrapReverse,
+                                flex_direction: FlexDirection::Row,
                                 ..default()
                             },
                             background_color: Color::rgb(0.73, 0.68, 0.63).into(),

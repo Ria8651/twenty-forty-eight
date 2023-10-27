@@ -51,7 +51,15 @@ impl Board {
                 }
             }
         }
+
+        self.player_to_move = false;
+
         changed
+    }
+
+    pub fn computer_move(&mut self) {
+        self.add_random();
+        self.player_to_move = true;
     }
 
     pub fn get_moves(&self) -> Vec<Moves> {
@@ -84,7 +92,6 @@ impl Board {
         match moves {
             Moves::Player(swipe) => {
                 self.swipe(swipe);
-                self.player_to_move = false;
             }
             Moves::Computer(computer_moves) => match computer_moves {
                 ComputerMoves::PlaceTwo(pos) => {
