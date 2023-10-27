@@ -29,8 +29,10 @@ impl Plugin for UIPlugin {
 }
 
 #[derive(Resource, Reflect, Default)]
-struct UiSettings {
-    scoring_method: ScoringMethod,
+pub struct UiSettings {
+    pub scoring_method: ScoringMethod,
+    pub automatic: bool,
+    pub speed: f32,
 }
 
 #[derive(Resource)]

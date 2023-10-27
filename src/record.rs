@@ -13,7 +13,7 @@ impl Plugin for RecordPlugin {
                 save_location: "".into(),
                 move_stack: Vec::new(),
             })
-            .add_system(record_system);
+            .add_systems(Update, record_system);
     }
 }
 
