@@ -1,33 +1,44 @@
 use bevy::prelude::*; //, winit::WinitSettings
 use board::{Board, BoardPlugin, Direction, Pos, UpdateBoardEvent};
-use record::RecordPlugin;
+use nn::NN;
+use record::{RecordEvent, RecordPlugin};
 use ui::UIPlugin;
 
+mod ai;
 mod board;
 mod record;
 mod ui;
 
 fn main() {
+    // let nn = Some(ai::train());
+
+    // let json = std::fs::read_to_string("take2.json").unwrap();
+    // let nn = Some(NN::from_json(&json));
+
+    let nn = None;
+
     App::new()
+        .add_plugins((DefaultPlugins, BoardPlugin, UIPlugin, RecordPlugin))
         // .insert_resource(WinitSettings::desktop_app())
-        .add_plugins(DefaultPlugins)
-        .add_plugin(BoardPlugin)
-        .add_plugin(UIPlugin)
-        .add_plugin(RecordPlugin)
-        .add_startup_system(setup)
-        .add_system(update)
+        .insert_resource(Network(nn))
+        .add_systems(Startup, setup)
+        .add_systems(Update, update)
         .run();
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle::default());
 }
+
+#[derive(Resource)]
+struct Network(Option<NN>);
 
 fn update(
     input: Res<Input<KeyCode>>,
     mut board: ResMut<Board>,
     mut events: EventWriter<UpdateBoardEvent>,
-    mut record_event: EventWriter<record::RecordEvent>,
+    mut record_event: EventWriter<RecordEvent>,
+    nn: Res<Network>,
 ) {
     let tmp_board = board.clone();
 
@@ -57,33 +68,71 @@ fn update(
     }
 
     if input.just_pressed(KeyCode::Space) {
-        // print each of the scoreing types
-        println!(
-            "MaxScore: {}, MostEmpty: {}, Adjacentcy: {}",
-            score(&board, Scoreing::MaxScore),
-            score(&board, Scoreing::MostEmpty) * 100,
-            score(&board, Scoreing::Adjacentcy)
-        );
+        // // print each of the scoreing types
+        // println!(
+        //     "MaxScore: {}, MostEmpty: {}, Adjacentcy: {}",
+        //     score(&board, Scoreing::MaxScore),
+        //     score(&board, Scoreing::MostEmpty) * 100,
+        //     score(&board, Scoreing::Adjacentcy)
+        // );
+
+        // print out the ai prediction
+        // if let Some(nn) = &nn.0 {
+        //     let outputs = nn.run(&ai::board_to_nn_in(&board));
+        //     println!(
+        //         "Up: {}, Down: {}, Left: {}, Right: {}",
+        //         outputs[0], outputs[1], outputs[2], outputs[3]
+        //     );
+        // }
+
+        // print out the board inputs
+        let inputs = ai::board_to_nn_in(&board);
+        for i in 0..256 {
+            if i % 16 == 0 {
+                println!();
+            }
+            print!("{}, ", inputs[i]);
+        }
     }
 
-    // ai player
-    // match Technique::RecursiveScoring {
-    //     Technique::DownLeft => {
-    //         board.swipe(Direction::Down);
-    //         board.swipe(Direction::Right);
-    //         if *board == tmp_board {
-    //             board.swipe(Direction::Left);
-    //             board.swipe(Direction::Down);
-    //             board.swipe(Direction::Right);
+    // // neural network player
+    // if let Some(nn) = &nn.0 {
+    //     let outputs = nn.run(&ai::board_to_nn_in(&board));
+    //     let mut sorted_outputs = outputs.iter().enumerate().collect::<Vec<(usize, &f64)>>();
+    //     sorted_outputs.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
+    //     for i in 0..4 {
+    //         let direction = match sorted_outputs[i].0 {
+    //             0 => Direction::Up,
+    //             1 => Direction::Down,
+    //             2 => Direction::Left,
+    //             3 => Direction::Right,
+    //             _ => unreachable!(),
+    //         };
+    //         board.swipe(direction);
+    //         if *board != tmp_board {
+    //             break;
     //         }
     //     }
-    //     Technique::RecursiveScoring => {
-    //         // for _ in 0..10 {
-    //         let tmp = board.clone();
-    //         board.swipe(recursive_board_score(&tmp, 7, Scoreing::MaxScore).1);
-    //         // }
-    //     }
     // }
+
+    // algorithmic player
+    match Technique::RecursiveScoring {
+        Technique::DownLeft => {
+            board.swipe(Direction::Down);
+            board.swipe(Direction::Right);
+            if *board == tmp_board {
+                board.swipe(Direction::Left);
+                board.swipe(Direction::Down);
+                board.swipe(Direction::Right);
+            }
+        }
+        Technique::RecursiveScoring => {
+            // for _ in 0..10 {
+            let tmp = board.clone();
+            board.swipe(recursive_board_score(&tmp, 7, ScoringMethod::MaxScore).1);
+            // }
+        }
+    }
 
     if *board != tmp_board {
         events.send(UpdateBoardEvent);
@@ -96,20 +145,23 @@ enum Technique {
     RecursiveScoring,
 }
 
-#[derive(Clone, Copy)]
-enum Scoreing {
-    MaxScore,
+#[derive(Clone, Copy, Default, Reflect)]
+enum ScoringMethod {
+    #[default]
     MostEmpty,
+    ZigZag,
+    MaxScore,
     Position,
     Adjacentcy,
     Random,
 }
 
-fn recursive_board_score(board: &Board, depth: u32, scoreing: Scoreing) -> (i32, Direction) {
+fn recursive_board_score(board: &Board, depth: u32, scoreing: ScoringMethod) -> (i32, Direction) {
     if depth == 0 {
         let mut board_score = 0;
+        board_score += score(board, ScoringMethod::ZigZag);
         // board_score += score(board, Scoreing::MaxScore);
-        board_score += score(board, Scoreing::MostEmpty) * 100;
+        // board_score += score(board, Scoreing::MostEmpty) * 100;
         // board_score += score(board, Scoreing::Adjacentcy);
         // board_score += score(board, Scoreing::Position);
 
@@ -159,9 +211,9 @@ fn recursive_board_score(board: &Board, depth: u32, scoreing: Scoreing) -> (i32,
     (scores[max], directions[max])
 }
 
-fn score(board: &Board, scoreing: Scoreing) -> u32 {
+fn score(board: &Board, scoreing: ScoringMethod) -> u32 {
     match scoreing {
-        Scoreing::MaxScore => {
+        ScoringMethod::MaxScore => {
             let mut score = 0;
             for y in 0..4 {
                 for x in 0..4 {
@@ -174,7 +226,7 @@ fn score(board: &Board, scoreing: Scoreing) -> u32 {
             }
             score
         }
-        Scoreing::MostEmpty => {
+        ScoringMethod::MostEmpty => {
             let mut empty = 0;
             for y in 0..4 {
                 for x in 0..4 {
@@ -185,7 +237,7 @@ fn score(board: &Board, scoreing: Scoreing) -> u32 {
             }
             empty
         }
-        Scoreing::Position => {
+        ScoringMethod::Position => {
             let mut score: u32 = 0;
             let chain = chain();
 
@@ -241,7 +293,7 @@ fn score(board: &Board, scoreing: Scoreing) -> u32 {
 
             score
         }
-        Scoreing::Adjacentcy => {
+        ScoringMethod::Adjacentcy => {
             let mut score = 0;
             for y in 0..4 {
                 for x in 0..4 {
@@ -266,7 +318,10 @@ fn score(board: &Board, scoreing: Scoreing) -> u32 {
             }
             score
         }
-        Scoreing::Random => rand::random::<u32>(),
+        ScoringMethod::Random => rand::random::<u32>(),
+        ScoringMethod::ZigZag => {
+            1
+        }
     }
 }
 

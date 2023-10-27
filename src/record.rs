@@ -23,12 +23,14 @@ pub struct InoutPair<A, B> {
     pub output: B,
 }
 
+#[derive(Resource)]
 pub struct RecordInfo {
     pub recording: bool,
     save_location: PathBuf,
     move_stack: Vec<InoutPair<Board, Direction>>,
 }
 
+#[derive(Event)]
 pub enum RecordEvent {
     Start,
     Stop,
@@ -56,7 +58,7 @@ fn record_system(
                         .add_filter("2048 recording", &["tfer"])
                         .save_file()
                 });
-                commands.spawn().insert(SelectedFile(task));
+                commands.spawn(SelectedFile(task));
 
                 println!("Started recording");
             }

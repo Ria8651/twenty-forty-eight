@@ -15,12 +15,12 @@ impl Plugin for BoardPlugin {
             //     ],
             // })
             .insert_resource(Board::new())
-            .add_startup_system(setup)
-            .add_system(update_board);
+            .add_systems(Startup, setup)
+            .add_systems(Update, update_board);
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Resource, Debug, Clone, PartialEq, Eq)]
 pub struct Board {
     pub data: Vec<Vec<u8>>,
 }
@@ -141,6 +141,7 @@ pub enum Direction {
     Right,
 }
 
+#[derive(Event)]
 pub struct UpdateBoardEvent;
 
 #[derive(Component)]
@@ -171,7 +172,7 @@ fn update_board(
     board: Res<Board>,
     mut update_event: EventReader<UpdateBoardEvent>,
     mut querys: ParamSet<(
-        Query<(&Tile, &mut UiColor)>,
+        Query<(&Tile, &mut BackgroundColor)>,
         Query<(&TileText, &mut Text)>,
         Query<&mut Text, With<ScoreText>>,
         Query<&mut Text, With<TimeText>>,
@@ -206,7 +207,7 @@ fn update_board(
 
         let mut time_query = querys.p3();
         let mut time_text = time_query.single_mut();
-        time_text.sections[0].value = format!("{:.2}", time.seconds_since_startup());
+        time_text.sections[0].value = format!("{:.2}", time.startup().elapsed().as_secs_f32());
     }
 }
 
@@ -216,45 +217,48 @@ fn setup(
     mut update_event: EventWriter<UpdateBoardEvent>,
 ) {
     commands
-        .spawn_bundle(NodeBundle {
+        .spawn(NodeBundle {
             style: Style {
-                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 ..default()
             },
-            color: Color::rgb(0.98, 0.97, 0.94).into(),
+            background_color: Color::rgb(0.98, 0.97, 0.94).into(),
             ..default()
         })
         .with_children(|parent| {
             parent
-                .spawn_bundle(NodeBundle {
+                .spawn(NodeBundle {
                     style: Style {
-                        size: Size::new(Val::Px(400.0), Val::Percent(100.0)),
+                        width: Val::Px(400.0),
+                        height: Val::Percent(100.0),
                         flex_direction: FlexDirection::ColumnReverse,
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::Center,
                         ..default()
                     },
-                    color: Color::NONE.into(),
+                    background_color: Color::NONE.into(),
                     ..default()
                 })
                 .with_children(|parent| {
                     parent
-                        .spawn_bundle(NodeBundle {
+                        .spawn(NodeBundle {
                             style: Style {
-                                size: Size::new(Val::Percent(100.0), Val::Px(80.0)),
+                                width: Val::Percent(100.0),
+                                height: Val::Px(80.0),
                                 flex_direction: FlexDirection::Row,
                                 align_items: AlignItems::Center,
                                 justify_content: JustifyContent::SpaceBetween,
                                 ..default()
                             },
-                            color: Color::NONE.into(),
+                            background_color: Color::NONE.into(),
                             ..default()
                         })
                         .with_children(|parent| {
                             parent
-                                .spawn_bundle(TextBundle::from_section(
+                                .spawn(TextBundle::from_section(
                                     "0",
                                     TextStyle {
                                         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
@@ -264,7 +268,7 @@ fn setup(
                                 ))
                                 .insert(ScoreText);
                             parent
-                                .spawn_bundle(TextBundle::from_section(
+                                .spawn(TextBundle::from_section(
                                     "0",
                                     TextStyle {
                                         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
@@ -276,9 +280,10 @@ fn setup(
                         });
 
                     parent
-                        .spawn_bundle(NodeBundle {
+                        .spawn(NodeBundle {
                             style: Style {
-                                size: Size::new(Val::Px(400.0), Val::Px(400.0)),
+                                width: Val::Px(400.0),
+                                height: Val::Px(400.0),
                                 padding: UiRect {
                                     top: Val::Px(10.0),
                                     left: Val::Px(10.0),
@@ -287,15 +292,16 @@ fn setup(
                                 flex_wrap: FlexWrap::Wrap,
                                 ..default()
                             },
-                            color: Color::rgb(0.73, 0.68, 0.63).into(),
+                            background_color: Color::rgb(0.73, 0.68, 0.63).into(),
                             ..default()
                         })
                         .with_children(|parent| {
                             for i in 0..16 {
                                 parent
-                                    .spawn_bundle(NodeBundle {
+                                    .spawn(NodeBundle {
                                         style: Style {
-                                            size: Size::new(Val::Px(87.5), Val::Px(87.5)),
+                                            width: Val::Px(87.5),
+                                            height: Val::Px(87.5),
                                             margin: UiRect {
                                                 bottom: Val::Px(10.0),
                                                 right: Val::Px(10.0),
@@ -305,13 +311,13 @@ fn setup(
                                             align_items: AlignItems::Center,
                                             ..default()
                                         },
-                                        color: Color::rgb(0.6, 0.6, 0.6).into(),
+                                        background_color: Color::rgb(0.6, 0.6, 0.6).into(),
                                         ..default()
                                     })
                                     .insert(Tile(i))
                                     .with_children(|parent| {
                                         parent
-                                            .spawn_bundle(TextBundle::from_section(
+                                            .spawn(TextBundle::from_section(
                                                 i.to_string(),
                                                 TextStyle {
                                                     font: asset_server
