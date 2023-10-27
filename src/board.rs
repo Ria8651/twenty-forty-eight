@@ -1,6 +1,6 @@
 use rand::Rng;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Board {
     pub data: Vec<Vec<u8>>,
     pub player_to_move: bool,

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use board::{Board, Moves, Swipe};
 use evaluators::TwentyFortyEightEvaluator;
-use minimax::{Negamax, Strategy};
+use minimax::*;
 use record::{InoutPair, RecordEvent, RecordPlugin};
 use render::{BoardPlugin, UpdateBoardEvent};
 use ui::{UIPlugin, UiSettings};
@@ -25,15 +25,25 @@ fn main() {
 pub struct BoardResource(Board);
 
 fn setup(mut commands: Commands) {
+    commands.spawn(Camera2dBundle::default());
+
     let mut board = Board::new();
     board.add_random();
     board.add_random();
     commands.insert_resource(BoardResource(board));
-    commands.spawn(Camera2dBundle::default());
+
+    commands.insert_resource(ParallelSearchResource(ParallelSearch::new(
+        TwentyFortyEightEvaluator,
+        IterativeOptions::default().with_table_byte_size(128_000_000),
+        ParallelOptions::default().with_num_threads(8),
+    )));
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
 struct MoveTimer(f32);
+
+#[derive(Resource, Deref, DerefMut)]
+struct ParallelSearchResource(ParallelSearch<TwentyFortyEightEvaluator>);
 
 fn update(
     input: Res<Input<KeyCode>>,
@@ -41,6 +51,7 @@ fn update(
     mut events: EventWriter<UpdateBoardEvent>,
     mut record_event: EventWriter<RecordEvent>,
     mut move_timer: ResMut<MoveTimer>,
+    mut parallel_search: ResMut<ParallelSearchResource>,
     time: Res<Time>,
     ui_settings: Res<UiSettings>,
 ) {
@@ -65,14 +76,16 @@ fn update(
         if move_timer.0 > ui_settings.speed / 1000.0 {
             move_timer.0 = 0.0;
 
-            let mut strategy = Negamax::new(TwentyFortyEightEvaluator, ui_settings.depth);
-            if let Some(best_move) = strategy.choose_move(board.as_ref()) {
+            parallel_search.set_max_depth(ui_settings.depth);
+            if let Some(best_move) = parallel_search.choose_move(board.as_ref()) {
                 match best_move {
                     Moves::Player(new_swipe) => {
                         swipe = Some(new_swipe);
                     }
                     Moves::Computer(_) => panic!("Wrong players turn!"),
                 }
+                // board.apply_move(best_move);
+                // events.send(UpdateBoardEvent);
             }
         }
     }
